@@ -998,8 +998,20 @@ def copy_writable(src, dst):
     shutil.copyfile(src, dst)
 
 
+def long_path(p):
+    """(Windows) p as an extended-length path (\\\\?\\...): a game folder whose deepest file passes 260 characters still links
+    and is read (#1468); Python takes these without Windows' long-paths setting. Elsewhere, or one already: as is (nup.py's)"""
+    if os.name != "nt" or not p:
+        return p
+    p = os.path.abspath(p)
+    if p.startswith("\\\\?\\"):
+        return p
+    return "\\\\?\\UNC\\" + p[2:] if p.startswith("\\\\") else "\\\\?\\" + p
+
+
 def link_or_copy(src, dst):
     """the romfs by hard links where the disk allows: 26 GB not written twice"""
+    src, dst = long_path(src), long_path(dst)
     files = [os.path.join(d, f) for d, _, fs in os.walk(src) for f in fs]
     for i, s in enumerate(files):
         t = os.path.join(dst, os.path.relpath(s, src))
@@ -1028,7 +1040,7 @@ def link_or_copy(src, dst):
 def shader_census_cmd(romfs, out):
     """The shader list, under the same UTF-8 mode as the other steps. -I alone follows the console's code page, and an
     archive name that page cannot print stopped this step: the game then compiled its shaders as it played."""
-    return PY + [os.path.join(HERE, "shader_census.py"), romfs, "--out", out]
+    return PY + [os.path.join(HERE, "shader_census.py"), long_path(romfs), "--out", out]
 
 
 LIFT_KEY = ".lift_key"   # (in <work>/sa/gen: what the lifted C there was made from)
